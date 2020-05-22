@@ -9,24 +9,25 @@ using System.IO;
 namespace ConsoleApp19
 {
 
-    struct tupel
-    {
-        string kolom;
-        string value;
-        public tupel(string k, string v)
-        {
-            kolom = k;
-            value = v;
-        }
-    }
+	public struct tuple
+	{
+		public string column;
+		public string value;
+		public tuple(string k, string v)
+		{
+			column = k;
+			value = v;
+		}
+	}
 
 	class Program
 	{
-		static SQLiteConnection m_wlConnection;
+		static Dictionary<tuple, int> freqDict = new Dictionary<tuple, int>();
+
 		static SQLiteConnection m_dbConnection;
 		static void Main(string[] args)
 		{
-		
+
 			createDatabase();
 			rundbCommands();
 			workloadLoad();
@@ -36,6 +37,11 @@ namespace ConsoleApp19
 			SQLiteDataReader reader = henk.ExecuteReader();
 			while (reader.Read())
 				Console.WriteLine("id: " + reader["id"] + " name: " + reader["model"]);
+
+			foreach (KeyValuePair<tuple, int> t in freqDict)
+			{
+				Console.WriteLine(t.Key.column + " " + t.Key.value + " " + t.Value);
+			}
 			Console.ReadKey();
 		}
 
@@ -68,7 +74,8 @@ namespace ConsoleApp19
 			}
 		}
 
-		public static void qf(string[] q) {
+		public static void qf(string[] q)
+		{
 
 			int idx = 0;
 			int times = int.Parse(q[0]);
@@ -81,21 +88,32 @@ namespace ConsoleApp19
 				}
 			}
 
-			string k = q[idx++];
-			if (q[idx++] == "=")
+			while (idx < q.Length)
 			{
-				string v = q[idx++];
-			}
-			else
-			{
-				string v = q[idx++];
-			}
+				string k = q[idx++];
+				if (q[idx++] == "=")
+				{
+					string v = q[idx++];
+					freqCounter(v, k, times);
 
-			if (idx < q.Length)
-			{
-				
-			}
+				}
+				else
+				{
+					char[] temp = q[idx++].ToCharArray();
+					string clean = "";
+					for (int i = 1; i < temp.Length - 1; i++)
+					{
+						clean += temp[i];
+					}
+					string[] v = clean.Split(',');
+					foreach (string input in v)
+					{
+						freqCounter(input, k, times);
+					}
+				}
 
+				idx++;
+			}
 		}
 
 		static void workloadLoad()
@@ -117,6 +135,19 @@ namespace ConsoleApp19
 			{
 				Console.WriteLine("The file could not be read:");
 				Console.WriteLine(e.Message);
+			}
+		}
+
+		static void freqCounter(string v, string k, int times)
+		{
+			tuple temp = new tuple(k, v);
+			if (freqDict.ContainsKey(temp))
+			{
+				freqDict[new tuple(k, v)] += times;
+			}
+			else
+			{
+				freqDict.Add(temp, times);
 			}
 		}
 	}
