@@ -23,6 +23,8 @@ namespace ConsoleApp19
 	class Program
 	{
 		static Dictionary<tuple, int> freqDict = new Dictionary<tuple, int>();
+		static Dictionary<string, int> maxDict = new Dictionary<string, int>();
+		static Dictionary<tuple, float> qfDict = new Dictionary<tuple, float>();
 
 		static SQLiteConnection m_dbConnection;
 		static void Main(string[] args)
@@ -31,6 +33,7 @@ namespace ConsoleApp19
 			createDatabase();
 			rundbCommands();
 			workloadLoad();
+			qf();
 
 			string command = "Select * from autompg";
 			SQLiteCommand henk = new SQLiteCommand(command, m_dbConnection);
@@ -38,10 +41,7 @@ namespace ConsoleApp19
 			while (reader.Read())
 				Console.WriteLine("id: " + reader["id"] + " name: " + reader["model"]);
 
-			foreach (KeyValuePair<tuple, int> t in freqDict)
-			{
-				Console.WriteLine(t.Key.column + " " + t.Key.value + " " + t.Value);
-			}
+
 			Console.ReadKey();
 		}
 
@@ -143,11 +143,33 @@ namespace ConsoleApp19
 			tuple temp = new tuple(k, v);
 			if (freqDict.ContainsKey(temp))
 			{
-				freqDict[new tuple(k, v)] += times;
+				freqDict[temp] += times;
 			}
 			else
 			{
 				freqDict.Add(temp, times);
+			}
+
+			if (maxDict.ContainsKey(k))
+			{
+				if (maxDict[k] < freqDict[temp])
+				{
+					maxDict[k] = freqDict[temp];
+				}
+			}
+			else
+			{
+				maxDict.Add(k, freqDict[temp]);
+			}
+		}
+		//  RQFk(v) / RQFMAXk
+		static void qf()
+		{
+			foreach (KeyValuePair<tuple, int> t in freqDict)
+			{
+				float qfv = (float)t.Value / maxDict[t.Key.column];
+				qfDict.Add(t.Key, qfv);
+				Console.WriteLine(t.Key.column + " " + t.Key.value + " " + qfv);
 			}
 		}
 	}
