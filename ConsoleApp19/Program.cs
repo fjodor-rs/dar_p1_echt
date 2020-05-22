@@ -8,6 +8,18 @@ using System.IO;
 
 namespace ConsoleApp19
 {
+
+    struct tupel
+    {
+        string kolom;
+        string value;
+        public tupel(string k, string v)
+        {
+            kolom = k;
+            value = v;
+        }
+    }
+
 	class Program
 	{
 		static SQLiteConnection m_wlConnection;
