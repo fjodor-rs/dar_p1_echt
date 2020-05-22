@@ -10,15 +10,15 @@ namespace ConsoleApp19
 {
 	class Program
 	{
+		static SQLiteConnection m_wlConnection;
 		static SQLiteConnection m_dbConnection;
 		static void Main(string[] args)
 		{
-			// kaas dfsdaf
-			// dfdfd
-			// DSFADSFADSF
+		
 			createDatabase();
 			rundbCommands();
-			
+			workloadLoad();
+
 			string command = "Select * from autompg";
 			SQLiteCommand henk = new SQLiteCommand(command, m_dbConnection);
 			SQLiteDataReader reader = henk.ExecuteReader();
@@ -38,7 +38,7 @@ namespace ConsoleApp19
 		{
 			try
 			{
-				using (StreamReader sr = new StreamReader("database.txt"))
+				using (StreamReader sr = new StreamReader("../../database.txt"))
 				{
 					string line;
 
@@ -54,7 +54,58 @@ namespace ConsoleApp19
 				Console.WriteLine("The file could not be read:");
 				Console.WriteLine(e.Message);
 			}
+		}
 
+		public static void qf(string[] q) {
+
+			int idx = 0;
+			int times = int.Parse(q[0]);
+			for (int i = 0; i < q.Length; i++)
+			{
+				if (q[i].ToUpper() == "WHERE")
+				{
+					idx = ++i;
+					break;
+				}
+			}
+
+			string k = q[idx++];
+			if (q[idx++] == "=")
+			{
+				string v = q[idx++];
+			}
+			else
+			{
+				string v = q[idx++];
+			}
+
+			if (idx < q.Length)
+			{
+				
+			}
+
+		}
+
+		static void workloadLoad()
+		{
+			try
+			{
+				using (StreamReader sr = new StreamReader("../../workload.txt"))
+				{
+					string line;
+
+					while ((line = sr.ReadLine()) != null)
+					{
+						string[] q = line.Split(' ');
+						qf(q);
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine("The file could not be read:");
+				Console.WriteLine(e.Message);
+			}
 		}
 	}
 }
