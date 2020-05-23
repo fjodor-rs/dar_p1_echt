@@ -159,6 +159,12 @@ namespace ConsoleApp19
 
 		static void freqCounter(string v, string k, int times)
 		{
+            v = v.Remove(0,1);
+            v = v.Remove(v.Length-1, 1);
+            if(double.TryParse(v, out double test))
+            {
+                return;
+            }
 			tuple temp = new tuple(k, v);
 			if (freqDict.ContainsKey(temp))
 			{
@@ -274,12 +280,10 @@ namespace ConsoleApp19
 
 			foreach (KeyValuePair<tuple, double> t in qfDict)
 			{
-				double test;
-				if(!double.TryParse(t.Key.value, out test))
-					sr.WriteLine("INSERT INTO metadb VALUES (" + t.Key.column + ", " + t.Key.value + ", " + t.Value + ")");
-			}
+                sr.WriteLine("INSERT INTO metadb VALUES (" + t.Key.column + ", " + t.Key.value + ", " + t.Value + ")");
+            }
 
-			sr.Close();
+            sr.Close();
 		}
 	}
 }
