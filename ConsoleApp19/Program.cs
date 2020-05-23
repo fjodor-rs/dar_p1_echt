@@ -22,9 +22,11 @@ namespace ConsoleApp19
 
 	class Program
 	{
+		static int N = 395;
 		static Dictionary<tuple, int> freqDict = new Dictionary<tuple, int>();
 		static Dictionary<string, int> maxDict = new Dictionary<string, int>();
 		static Dictionary<tuple, float> qfDict = new Dictionary<tuple, float>();
+		static Dictionary<tuple, double> idfCatDict = new Dictionary<tuple, double>();
 
 		static SQLiteConnection m_dbConnection;
 		static void Main(string[] args)
@@ -37,12 +39,27 @@ namespace ConsoleApp19
 
 			string command = "Select * from autompg";
 			SQLiteCommand henk = new SQLiteCommand(command, m_dbConnection);
-			SQLiteDataReader reader = henk.ExecuteReader();
-			while (reader.Read())
-				Console.WriteLine("id: " + reader["id"] + " name: " + reader["model"]);
+			SQLiteDataReader r = henk.ExecuteReader();
+			while (r.Read())
+				Console.WriteLine("id: " + r["id"] + " name: " + r["model"]);
 
+			while (true)
+			{
+				string s = Console.ReadLine();
+				SQLiteCommand com = new SQLiteCommand(s, m_dbConnection);
+				SQLiteDataReader reader = com.ExecuteReader();
+				while (reader.Read())
+				{
+					object[] array = new object[1];
+					reader.GetValues(array);
 
-			Console.ReadKey();
+					for (int i = 0; i < array.Length; i++)
+					{
+						Console.Write(reader.GetName(i) + ": " + array[i] + ", ");
+					}
+					Console.WriteLine();
+				}
+			}
 		}
 
 		public static void createDatabase()
@@ -170,6 +187,34 @@ namespace ConsoleApp19
 				float qfv = (float)t.Value / maxDict[t.Key.column];
 				qfDict.Add(t.Key, qfv);
 				Console.WriteLine(t.Key.column + " " + t.Key.value + " " + qfv);
+			}
+		}
+
+		static void idf()
+		{
+			string sql = "";
+			string[] clNames = {"mpg", "cylinders", "displacement", "horsepower", "weight", "acceleration", "model_year", "origin", "brand", "model", "type"};
+			for (int i = 0; i < 10; i++)
+			{
+				if (i < 9)
+				{
+
+				}
+				else
+				{
+					sql = "select distinct " + clNames[i] + " from autompg";
+				}
+
+				SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
+				SQLiteDataReader reader = command.ExecuteReader();
+				while (reader.Read())
+				{
+					string val = reader[clNames[i]].ToString();
+					sql = "select count(*) from autompg where " + clNames[i] + " = '" + val + "'";
+					SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
+					int freq = (int)com.ExecuteScalar();
+					idfCatDict.Add(new tuple(clNames[i], val), Math.Log10(N/freq));
+				}
 			}
 		}
 	}
