@@ -26,7 +26,7 @@ namespace ConsoleApp19
 		static Dictionary<tuple, int> freqDict = new Dictionary<tuple, int>();
 		static Dictionary<string, int> maxDict = new Dictionary<string, int>();
 		static Dictionary<tuple, float> qfDict = new Dictionary<tuple, float>();
-		static Dictionary<tuple, double> idfCatDict = new Dictionary<tuple, double>();
+		static Dictionary<tuple, double> idfDict = new Dictionary<tuple, double>();
 
 		static SQLiteConnection m_dbConnection;
 		static void Main(string[] args)
@@ -196,26 +196,61 @@ namespace ConsoleApp19
 			string[] clNames = {"mpg", "cylinders", "displacement", "horsepower", "weight", "acceleration", "model_year", "origin", "brand", "model", "type"};
 			for (int i = 0; i < 10; i++)
 			{
-				if (i < 9)
-				{
+				sql = "select distinct " + clNames[i] + " from autompg";
+				SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
+				SQLiteDataReader reader = command.ExecuteReader();
 
+				if (i < 8)
+				{
+					double h = calculateStdDev(clNames[i]) * 1.06 * Math.Pow(N, -1/5.0);
+					while (reader.Read())
+					{
+						double denom = 0;
+						double t = (double) reader[clNames[i]];
+						sql = "select " + clNames[i] + " from autompg";
+						SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
+						SQLiteDataReader r = com.ExecuteReader();
+						while (reader.Read())
+						{
+							double ti = (double)reader[clNames[i]];
+							double diff = ti - t;
+							denom += Math.Exp(-0.5 * (diff / h) * (diff / h));
+						}
+			
+						idfDict.Add(new tuple(clNames[i], t.ToString()), Math.Log10(N / denom));
+					}
 				}
 				else
 				{
-					sql = "select distinct " + clNames[i] + " from autompg";
+
+					while (reader.Read())
+					{
+						string val = reader[clNames[i]].ToString();
+						sql = "select count(*) from autompg where " + clNames[i] + " = '" + val + "'";
+						SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
+						int freq = (int)com.ExecuteScalar();
+						idfDict.Add(new tuple(clNames[i], val), Math.Log10(N / freq));
+					}
 				}
 
-				SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
-				SQLiteDataReader reader = command.ExecuteReader();
-				while (reader.Read())
-				{
-					string val = reader[clNames[i]].ToString();
-					sql = "select count(*) from autompg where " + clNames[i] + " = '" + val + "'";
-					SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
-					int freq = (int)com.ExecuteScalar();
-					idfCatDict.Add(new tuple(clNames[i], val), Math.Log10(N/freq));
-				}
 			}
+		}
+
+		static double calculateStdDev(string col)
+		{
+			double sum = 0;
+			string avgsql = "Select avg(" + col + ") from autompg";
+			SQLiteCommand command = new SQLiteCommand(avgsql, m_dbConnection);
+			double avg = (double)command.ExecuteScalar();
+			string sql = "Select " + col + " from autompg";
+			SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
+			SQLiteDataReader r = com.ExecuteReader();
+
+			while (r.Read())
+			{
+				sum += (((double) r[col]) - avg) * (((double)r[col]) - avg);
+			}
+			return Math.Sqrt(sum / (N-1));
 		}
 	}
 }
