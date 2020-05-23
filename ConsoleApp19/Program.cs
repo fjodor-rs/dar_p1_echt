@@ -20,13 +20,27 @@ namespace ConsoleApp19
 		}
 	}
 
+	public struct tupleInt
+	{
+		public int query;
+		public int times;
+		public tupleInt(int k, int v)
+		{
+			query = k;
+			times = v;
+		}
+	}
+
 	class Program
 	{
 		static int N = 395;
+		static int id = 0;
 		static Dictionary<tuple, int> freqDict = new Dictionary<tuple, int>();
 		static Dictionary<string, int> maxDict = new Dictionary<string, int>();
 		static Dictionary<tuple, double> qfDict = new Dictionary<tuple, double>();
 		static Dictionary<tuple, double> idfDict = new Dictionary<tuple, double>();
+		static Dictionary<string, List <tupleInt>> jaqDict = new Dictionary<string, List<tupleInt>>();
+
 
 		static SQLiteConnection m_dbConnection;
 		static void Main(string[] args)
@@ -95,7 +109,6 @@ namespace ConsoleApp19
 
 		public static void qf(string[] q)
 		{
-
 			int idx = 0;
 			int times = int.Parse(q[0]);
 			for (int i = 0; i < q.Length; i++)
@@ -118,17 +131,20 @@ namespace ConsoleApp19
 
 				else
 				{
-					char[] temp = q[idx++].ToCharArray();
-					string clean = "";
-					for (int i = 1; i < temp.Length - 1; i++)
-					{
-						clean += temp[i];
-					}
-					string[] v = clean.Split(',');
+					string comb = trimString(q[idx++]);
+					
+					string[] v = comb.Split(',');
+
+
 					foreach (string input in v)
 					{
+						if (jaqDict.ContainsKey(input))
+							jaqDict[input].Add(new tupleInt(id, times));
+						else
+							jaqDict.Add(input, new List<tupleInt> { new tupleInt(id, times) });
 						freqCounter(input, k, times);
 					}
+					id++;
 				}
 
 				idx++;
@@ -159,8 +175,8 @@ namespace ConsoleApp19
 
 		static void freqCounter(string v, string k, int times)
 		{
-            v = v.Remove(0,1);
-            v = v.Remove(v.Length-1, 1);
+			v = trimString(v);
+
             if(double.TryParse(v, out double test))
             {
                 return;
@@ -275,15 +291,79 @@ namespace ConsoleApp19
 
 			foreach (KeyValuePair<tuple, double> t in idfDict)
 			{
-				sr.WriteLine("INSERT INTO metadb VALUES (" + t.Key.column + ", " + t.Key.value + ", " + t.Value +  ")" );
+				sr.WriteLine("INSERT INTO idfqf VALUES (" + t.Key.column + ", " + t.Key.value + ", " + t.Value +  ")" );
 			}
 
 			foreach (KeyValuePair<tuple, double> t in qfDict)
 			{
-                sr.WriteLine("INSERT INTO metadb VALUES (" + t.Key.column + ", " + t.Key.value + ", " + t.Value + ")");
+                sr.WriteLine("INSERT INTO idfqf VALUES (" + t.Key.column + ", " + t.Key.value + ", " + t.Value + ")");
             }
 
+			calculateJaqCof(sr);
             sr.Close();
+		}
+
+		static string trimString(string v)
+		{
+			v = v.Remove(0, 1);
+			v = v.Remove(v.Length - 1, 1);
+			return v;
+		}
+
+		static void calculateJaqCof(StreamWriter sr)
+		{
+			foreach (KeyValuePair<string, List<tupleInt>> t0 in jaqDict)
+			{
+				foreach (KeyValuePair<string, List<tupleInt>> t1 in jaqDict)
+				{
+					
+					if (t0.Equals(t1))
+					{
+						break;
+					}
+
+					int i = 0;
+					int j = 0;
+					int total = 0;
+					int combo = 0;
+
+					while (i < t0.Value.Count || j < t1.Value.Count)
+					{
+						if (i < t0.Value.Count && j < t1.Value.Count)
+						{
+							if (t0.Value[i].query == t1.Value[j].query)
+							{
+								total += t0.Value[i].times;
+								combo += t0.Value[i].times;
+								i++;
+								j++;
+							}
+							else if (t0.Value[i].query < t1.Value[j].query)
+							{
+								total += t0.Value[i].times;
+								i++;
+							}
+							else
+							{
+								total += t1.Value[j].times;
+								j++;
+							}
+						}
+						else if (i < t0.Value.Count)
+						{
+							total += t0.Value[i].times;
+							i++;
+						}
+						else
+						{
+							total += t1.Value[j].times;
+							j++;
+						}
+					}
+
+					sr.WriteLine("INSERT INTO jacquard VALUES (" + t0.Key + ", " + t1.Key + ", " + ((double) combo) / total + ")" );
+				}
+			}
 		}
 	}
 }

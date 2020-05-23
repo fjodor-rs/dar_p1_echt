@@ -1,6 +1,13 @@
-﻿CREATE TABLE metadb (
+﻿CREATE TABLE idfqf (
 	column text,
 	value text,
 	idfqf real,
     PRIMARY KEY (column, value)
 );
+
+CREATE TABLE jacquard (
+	value_1 text,
+	value_2 text,
+	jacq real,
+	PRIMARY KEY (value_1, value_2)
+ );
