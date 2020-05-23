@@ -1,0 +1,6 @@
+﻿CREATE TABLE metadb (
+	column text,
+	value text,
+	idfqf real,
+    PRIMARY KEY (column, value)
+);

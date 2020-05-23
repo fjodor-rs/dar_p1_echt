@@ -25,7 +25,7 @@ namespace ConsoleApp19
 		static int N = 395;
 		static Dictionary<tuple, int> freqDict = new Dictionary<tuple, int>();
 		static Dictionary<string, int> maxDict = new Dictionary<string, int>();
-		static Dictionary<tuple, float> qfDict = new Dictionary<tuple, float>();
+		static Dictionary<tuple, double> qfDict = new Dictionary<tuple, double>();
 		static Dictionary<tuple, double> idfDict = new Dictionary<tuple, double>();
 
 		static SQLiteConnection m_dbConnection;
@@ -36,6 +36,8 @@ namespace ConsoleApp19
 			rundbCommands();
 			workloadLoad();
 			qf();
+			idf();
+			fillMetaDB();
 
 			string command = "Select * from autompg";
 			SQLiteCommand henk = new SQLiteCommand(command, m_dbConnection);
@@ -112,8 +114,8 @@ namespace ConsoleApp19
 				{
 					string v = q[idx++];
 					freqCounter(v, k, times);
-
 				}
+
 				else
 				{
 					char[] temp = q[idx++].ToCharArray();
@@ -184,7 +186,7 @@ namespace ConsoleApp19
 		{
 			foreach (KeyValuePair<tuple, int> t in freqDict)
 			{
-				float qfv = (float)t.Value / maxDict[t.Key.column];
+				double qfv = (double)t.Value / maxDict[t.Key.column];
 				qfDict.Add(t.Key, qfv);
 				Console.WriteLine(t.Key.column + " " + t.Key.value + " " + qfv);
 			}
@@ -206,13 +208,13 @@ namespace ConsoleApp19
 					while (reader.Read())
 					{
 						double denom = 0;
-						double t = (double) reader[clNames[i]];
+						double t = double.Parse(reader[clNames[i]].ToString());
 						sql = "select " + clNames[i] + " from autompg";
 						SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
 						SQLiteDataReader r = com.ExecuteReader();
-						while (reader.Read())
+						while (r.Read())
 						{
-							double ti = (double)reader[clNames[i]];
+							double ti = double.Parse(r[clNames[i]].ToString());
 							double diff = ti - t;
 							denom += Math.Exp(-0.5 * (diff / h) * (diff / h));
 						}
@@ -220,18 +222,18 @@ namespace ConsoleApp19
 						idfDict.Add(new tuple(clNames[i], t.ToString()), Math.Log10(N / denom));
 					}
 				}
-				else
-				{
+				//else
+				//{
 
-					while (reader.Read())
-					{
-						string val = reader[clNames[i]].ToString();
-						sql = "select count(*) from autompg where " + clNames[i] + " = '" + val + "'";
-						SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
-						int freq = (int)com.ExecuteScalar();
-						idfDict.Add(new tuple(clNames[i], val), Math.Log10(N / freq));
-					}
-				}
+				//	while (reader.Read())
+				//	{
+				//		string val = reader[clNames[i]].ToString();
+				//		sql = "select count(*) from autompg where " + clNames[i] + " = '" + val + "'";
+				//		SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
+				//		int freq = (int)com.ExecuteScalar();
+				//		idfDict.Add(new tuple(clNames[i], val), Math.Log10(N / freq));
+				//	}
+				//}
 
 			}
 		}
@@ -245,12 +247,39 @@ namespace ConsoleApp19
 			string sql = "Select " + col + " from autompg";
 			SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
 			SQLiteDataReader r = com.ExecuteReader();
-
+			
 			while (r.Read())
 			{
-				sum += (((double) r[col]) - avg) * (((double)r[col]) - avg);
+				string temp = r[col].ToString();
+				sum += ((double.Parse(temp)) - avg) * ((double.Parse(temp)) - avg);
 			}
 			return Math.Sqrt(sum / (N-1));
+		}
+
+		static void createMetaDB()
+		{
+
+		}
+
+		static void fillMetaDB()
+		{
+			StreamWriter sr;
+			sr = new StreamWriter("../../metaload.txt");
+
+
+			foreach (KeyValuePair<tuple, double> t in idfDict)
+			{
+				sr.WriteLine("INSERT INTO metadb VALUES (" + t.Key.column + ", " + t.Key.value + ", " + t.Value +  ")" );
+			}
+
+			foreach (KeyValuePair<tuple, double> t in qfDict)
+			{
+				double test;
+				if(!double.TryParse(t.Key.value, out test))
+					sr.WriteLine("INSERT INTO metadb VALUES (" + t.Key.column + ", " + t.Key.value + ", " + t.Value + ")");
+			}
+
+			sr.Close();
 		}
 	}
 }

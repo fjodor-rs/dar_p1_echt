@@ -71,6 +71,8 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="database.txt" />
+    <Content Include="metadb.txt" />
+    <Content Include="metaload.txt" />
     <Content Include="workload.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
