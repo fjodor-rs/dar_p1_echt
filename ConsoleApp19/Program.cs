@@ -39,7 +39,7 @@ namespace ConsoleApp19
 		static Dictionary<string, int> maxDict = new Dictionary<string, int>();
 		static Dictionary<tuple, double> qfDict = new Dictionary<tuple, double>();
 		static Dictionary<tuple, double> idfDict = new Dictionary<tuple, double>();
-		static Dictionary<string, List <tupleInt>> jaqDict = new Dictionary<string, List<tupleInt>>();
+		static Dictionary<string, List<tupleInt>> jaqDict = new Dictionary<string, List<tupleInt>>();
 
 		static SQLiteConnection meta_dbConnection;
 		static SQLiteConnection m_dbConnection;
@@ -53,7 +53,7 @@ namespace ConsoleApp19
 			idf();
 			createMetaDB();
 			fillMetaDB();
-			
+
 
 			string command = "Select * from autompg";
 			SQLiteCommand henk = new SQLiteCommand(command, m_dbConnection);
@@ -68,14 +68,14 @@ namespace ConsoleApp19
 				SQLiteDataReader reader = com.ExecuteReader();
 				while (reader.Read())
 				{
-					
-					object[] array = new object[12] {"", "", "", "", "", "", "", "", "", "", "", "" };
+
+					object[] array = new object[12] { "", "", "", "", "", "", "", "", "", "", "", "" };
 					reader.GetValues(array);
 					for (int i = 0; i < array.Length; i++)
 					{
 						if (array[i].ToString() == "")
 							break;
-						Console.Write( reader.GetName(i) + ": " + array[i] + ", ");
+						Console.Write(reader.GetName(i) + ": " + array[i] + ", ");
 					}
 
 					Console.WriteLine();
@@ -137,7 +137,7 @@ namespace ConsoleApp19
 				else
 				{
 					string comb = trimString(q[idx++]);
-					
+
 					string[] v = comb.Split(',');
 
 
@@ -182,10 +182,10 @@ namespace ConsoleApp19
 		{
 			v = trimString(v);
 
-            if(double.TryParse(v, out double test))
-            {
-                return;
-            }
+			if (double.TryParse(v, out double test))
+			{
+				return;
+			}
 			tuple temp = new tuple(k, v);
 			if (freqDict.ContainsKey(temp))
 			{
@@ -221,7 +221,7 @@ namespace ConsoleApp19
 		static void idf()
 		{
 			string sql = "";
-			string[] clNames = {"mpg", "cylinders", "displacement", "horsepower", "weight", "acceleration", "model_year", "origin", "brand", "model", "type"};
+			string[] clNames = { "mpg", "cylinders", "displacement", "horsepower", "weight", "acceleration", "model_year", "origin", "brand", "model", "type" };
 			for (int i = 0; i < 10; i++)
 			{
 				sql = "select distinct " + clNames[i] + " from autompg";
@@ -230,7 +230,7 @@ namespace ConsoleApp19
 
 				if (i < 8)
 				{
-					double h = calculateStdDev(clNames[i]) * 1.06 * Math.Pow(N, -1/5.0);
+					double h = calculateStdDev(clNames[i]) * 1.06 * Math.Pow(N, -1 / 5.0);
 					while (reader.Read())
 					{
 						double denom = 0;
@@ -244,7 +244,7 @@ namespace ConsoleApp19
 							double diff = ti - t;
 							denom += Math.Exp(-0.5 * (diff / h) * (diff / h));
 						}
-			
+
 						idfDict.Add(new tuple(clNames[i], t.ToString()), Math.Log10(N / denom));
 					}
 				}
@@ -273,13 +273,13 @@ namespace ConsoleApp19
 			string sql = "Select " + col + " from autompg";
 			SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
 			SQLiteDataReader r = com.ExecuteReader();
-			
+
 			while (r.Read())
 			{
 				string temp = r[col].ToString();
 				sum += ((double.Parse(temp)) - avg) * ((double.Parse(temp)) - avg);
 			}
-			return Math.Sqrt(sum / (N-1));
+			return Math.Sqrt(sum / (N - 1));
 		}
 
 		static void createMetaDB()
@@ -296,10 +296,10 @@ namespace ConsoleApp19
 			sr = new StreamWriter("../../metaload.txt");
 			string sql = "";
 			SQLiteCommand command;
-			
+
 			foreach (KeyValuePair<tuple, double> t in idfDict)
 			{
-				
+
 				sql = "INSERT INTO idfqf VALUES ('" + t.Key.column + "', '" + t.Key.value + "', '" + doubleToString(t.Value) + "')";
 				sr.WriteLine(sql);
 				command = new SQLiteCommand(sql, meta_dbConnection);
@@ -315,7 +315,7 @@ namespace ConsoleApp19
 			}
 
 			calculateJaqCof(sr);
-            sr.Close();
+			sr.Close();
 		}
 
 		static string doubleToString(double val)
@@ -336,9 +336,13 @@ namespace ConsoleApp19
 			{
 				foreach (KeyValuePair<string, List<tupleInt>> t1 in jaqDict)
 				{
-					
+
 					if (t0.Equals(t1))
 					{
+						string sql = "INSERT INTO jacquard VALUES (" + t0.Key + ", " + t1.Key + ", '" + doubleToString(1.0) + "')";
+						sr.WriteLine(sql);
+						SQLiteCommand command = new SQLiteCommand(sql, meta_dbConnection);
+						command.ExecuteNonQuery();
 						break;
 					}
 
@@ -406,7 +410,7 @@ namespace ConsoleApp19
 			int strLength = end.Length / 2;
 			string[] columns = new string[strLength];
 			string[] values = new string[strLength];
-			
+
 			if (terms[0] == "k")
 			{
 				k = int.Parse(terms[1]);
@@ -426,12 +430,7 @@ namespace ConsoleApp19
 		static double calculateSim(string[] columns, string[] values)
 		{
 
-			SQLiteCommand metaCom;
-			SQLiteDataReader metaReader;
-
 			string sql = "select ";
-			string sqlMeta = "";
-			
 
 			for (int i = 0; i < columns.Length - 1; i++)
 			{
@@ -446,27 +445,31 @@ namespace ConsoleApp19
 			while (reader.Read())
 			{
 				double simScore = 0;
-				double idf = 0;
 				for (int i = 0; i < values.Length; i++)
 				{
-					// numerical similarity
-					if (double.TryParse(values[i], out double test))
+					string sqlMeta = "select idfqf from idfqf where column = " + columns[i] + "and value = " + values[i];
+					SQLiteCommand metaCom = new SQLiteCommand(sqlMeta, meta_dbConnection);
+					SQLiteDataReader metaReader = metaCom.ExecuteReader();
+					if (metaReader.Read())
 					{
-						sqlMeta = "select idfqf from idfqf where column = " + columns[i] + "and value = " + values[i];
-						metaCom = new SQLiteCommand(sqlMeta, m_dbConnection);
-						metaReader = metaCom.ExecuteReader();
-						if (metaReader.Read())
+						// numerical similarity
+						if (double.TryParse(values[i], out double test))
 						{
-							simScore += (double) metaReader.GetValue(0);
+							simScore += (double)metaReader.GetValue(0);
+						}
+
+						// categorical similarity
+						else
+						{
+							string sqlJaq = "select jacq from jacquard where value_1 = " + values[i] + "and value_2 = " + reader.GetValue(0);
+							SQLiteCommand jaqCom = new SQLiteCommand(sqlJaq, meta_dbConnection);
+							SQLiteDataReader jaqReader = jaqCom.ExecuteReader();
+							if (jaqReader.Read())
+							{
+								simScore += (double) jaqReader.GetValue(0) * (double)metaReader.GetValue(0);
+							}
 						}
 					}
-
-					// categorical similarity
-					else
-					{
-
-					}
-
 
 				}
 			}
