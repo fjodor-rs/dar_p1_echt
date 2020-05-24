@@ -9,43 +9,32 @@ using System.IO;
 namespace ConsoleApp19
 {
 
-	public struct tuple
+	public struct tuple<T, S>
 	{
-		public string column;
-		public string value;
-		public tuple(string k, string v)
+		public T first;
+		public S second;
+		public tuple(T f, S s)
 		{
-			column = k;
-			value = v;
+			first = f;
+			second = s;
 		}
 	}
 
-	public struct tupleInt
-	{
-		public int query;
-		public int times;
-		public tupleInt(int k, int v)
-		{
-			query = k;
-			times = v;
-		}
-	}
 
 	class Program
 	{
 		static int N = 395;
 		static int id = 0;
-		static Dictionary<tuple, int> freqDict = new Dictionary<tuple, int>();
+		static Dictionary<tuple<string, string>, int> freqDict = new Dictionary<tuple<string, string>, int>();
 		static Dictionary<string, int> maxDict = new Dictionary<string, int>();
-		static Dictionary<tuple, double> qfDict = new Dictionary<tuple, double>();
-		static Dictionary<tuple, double> idfDict = new Dictionary<tuple, double>();
-		static Dictionary<string, List<tupleInt>> jaqDict = new Dictionary<string, List<tupleInt>>();
+		static Dictionary<tuple<string, string>, double> qfDict = new Dictionary<tuple<string, string>, double>();
+		static Dictionary<tuple<string, string>, double> idfDict = new Dictionary<tuple<string, string>, double>();
+		static Dictionary<string, List<tuple<int, int>>> jaqDict = new Dictionary<string, List<tuple<int, int>>>();
 
 		static SQLiteConnection meta_dbConnection;
 		static SQLiteConnection m_dbConnection;
 		static void Main(string[] args)
 		{
-			queryParser("SHALOM WHERE SMABERT");
 			createDatabase();
 			rundbCommands("database.txt", m_dbConnection);
 			workloadLoad();
@@ -53,7 +42,7 @@ namespace ConsoleApp19
 			idf();
 			createMetaDB();
 			fillMetaDB();
-
+			queryParser("SELECT * FROM autompg WHERE k = 6, brand = 'volkswagen';");
 
 			string command = "Select * from autompg";
 			SQLiteCommand henk = new SQLiteCommand(command, m_dbConnection);
@@ -144,9 +133,9 @@ namespace ConsoleApp19
 					foreach (string input in v)
 					{
 						if (jaqDict.ContainsKey(input))
-							jaqDict[input].Add(new tupleInt(id, times));
+							jaqDict[input].Add(new tuple<int, int>(id, times));
 						else
-							jaqDict.Add(input, new List<tupleInt> { new tupleInt(id, times) });
+							jaqDict.Add(input, new List<tuple<int, int>> { new tuple<int, int>(id, times) });
 						freqCounter(input, k, times);
 					}
 					id++;
@@ -186,7 +175,7 @@ namespace ConsoleApp19
 			{
 				return;
 			}
-			tuple temp = new tuple(k, v);
+			tuple<string, string> temp = new tuple<string, string>(k, v);
 			if (freqDict.ContainsKey(temp))
 			{
 				freqDict[temp] += times;
@@ -211,9 +200,9 @@ namespace ConsoleApp19
 		//  RQFk(v) / RQFMAXk
 		static void qf()
 		{
-			foreach (KeyValuePair<tuple, int> t in freqDict)
+			foreach (KeyValuePair<tuple<string, string>, int> t in freqDict)
 			{
-				double qfv = (double)t.Value / maxDict[t.Key.column];
+				double qfv = (double)t.Value / maxDict[t.Key.first];
 				qfDict.Add(t.Key, qfv);
 			}
 		}
@@ -245,7 +234,7 @@ namespace ConsoleApp19
 							denom += Math.Exp(-0.5 * (diff / h) * (diff / h));
 						}
 
-						idfDict.Add(new tuple(clNames[i], t.ToString()), Math.Log10(N / denom));
+						idfDict.Add(new tuple<string, string>(clNames[i], t.ToString()), Math.Log10(N / denom));
 					}
 				}
 				//else
@@ -257,7 +246,7 @@ namespace ConsoleApp19
 				//		sql = "select count(*) from autompg where " + clNames[i] + " = '" + val + "'";
 				//		SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
 				//		int freq = (int)com.ExecuteScalar();
-				//		idfDict.Add(new tuple(clNames[i], val), Math.Log10(N / freq));
+				//		idfDict.Add(new tuple<string, string>(clNames[i], val), Math.Log10(N / freq));
 				//	}
 				//}
 
@@ -297,18 +286,18 @@ namespace ConsoleApp19
 			string sql = "";
 			SQLiteCommand command;
 
-			foreach (KeyValuePair<tuple, double> t in idfDict)
+			foreach (KeyValuePair<tuple<string, string>, double> t in idfDict)
 			{
 
-				sql = "INSERT INTO idfqf VALUES ('" + t.Key.column + "', '" + t.Key.value + "', '" + doubleToString(t.Value) + "')";
+				sql = "INSERT INTO idfqf VALUES ('" + t.Key.first + "', '" + t.Key.second + "', '" + doubleToString(t.Value) + "')";
 				sr.WriteLine(sql);
 				command = new SQLiteCommand(sql, meta_dbConnection);
 				command.ExecuteNonQuery();
 			}
 
-			foreach (KeyValuePair<tuple, double> t in qfDict)
+			foreach (KeyValuePair<tuple<string, string>, double> t in qfDict)
 			{
-				sql = "INSERT INTO idfqf VALUES ('" + t.Key.column + "', '" + t.Key.value + "', '" + doubleToString(t.Value) + "')";
+				sql = "INSERT INTO idfqf VALUES ('" + t.Key.first + "', '" + t.Key.second + "', '" + doubleToString(t.Value) + "')";
 				sr.WriteLine(sql);
 				command = new SQLiteCommand(sql, meta_dbConnection);
 				command.ExecuteNonQuery();
@@ -332,9 +321,9 @@ namespace ConsoleApp19
 
 		static void calculateJaqCof(StreamWriter sr)
 		{
-			foreach (KeyValuePair<string, List<tupleInt>> t0 in jaqDict)
+			foreach (KeyValuePair<string, List<tuple<int, int>>> t0 in jaqDict)
 			{
-				foreach (KeyValuePair<string, List<tupleInt>> t1 in jaqDict)
+				foreach (KeyValuePair<string, List<tuple<int, int>>> t1 in jaqDict)
 				{
 
 					if (t0.Equals(t1))
@@ -355,32 +344,32 @@ namespace ConsoleApp19
 					{
 						if (i < t0.Value.Count && j < t1.Value.Count)
 						{
-							if (t0.Value[i].query == t1.Value[j].query)
+							if (t0.Value[i].first == t1.Value[j].first)
 							{
-								total += t0.Value[i].times;
-								combo += t0.Value[i].times;
+								total += t0.Value[i].second;
+								combo += t0.Value[i].second;
 								i++;
 								j++;
 							}
-							else if (t0.Value[i].query < t1.Value[j].query)
+							else if (t0.Value[i].first < t1.Value[j].first)
 							{
-								total += t0.Value[i].times;
+								total += t0.Value[i].second;
 								i++;
 							}
 							else
 							{
-								total += t1.Value[j].times;
+								total += t1.Value[j].second;
 								j++;
 							}
 						}
 						else if (i < t0.Value.Count)
 						{
-							total += t0.Value[i].times;
+							total += t0.Value[i].second;
 							i++;
 						}
 						else
 						{
-							total += t1.Value[j].times;
+							total += t1.Value[j].second;
 							j++;
 						}
 					}
@@ -404,30 +393,39 @@ namespace ConsoleApp19
 			string start = query.Substring(0, query.IndexOf(split) + split.Length);
 			string end = query.Substring(query.IndexOf(split) + split.Length);
 			end = end.Replace(",", "");
-			end = end.Replace("=", "");
+			end = end.TrimEnd(';');
 			string[] terms = end.Split();
 			// als station_wagon niet mag kijk hiernaar
-			int strLength = end.Length / 2;
-			string[] columns = new string[strLength];
-			string[] values = new string[strLength];
+			int strLength = terms.Length / 3;
+			string[] columns; 
+			string[] values;
 
 			if (terms[0] == "k")
 			{
-				k = int.Parse(terms[1]);
-				start_i = 2;
+				k = int.Parse(terms[2]);
+				start_i = 3;
+				columns = new string[strLength - 1];
+				values = new string[strLength - 1];
+			}
+			else
+			{
+				columns = new string[strLength];
+				values = new string[strLength];
 			}
 
 			for (int i = start_i; i < terms.Length; i++)
 			{
-				columns[j] = terms[i++];
+				columns[j] = terms[i];
+				i += 2;
 				values[j] = terms[i];
 				j++;
 			}
-			calculateSim(columns, values);
 
+			tuple<int, double>[]  topKTuples = calculateSim(columns, values, k);
+			printTopK(topKTuples, start);
 		}
 
-		static double calculateSim(string[] columns, string[] values)
+		static tuple<int, double>[] calculateSim(string[] columns, string[] values, int k)
 		{
 
 			string sql = "select ";
@@ -438,18 +436,24 @@ namespace ConsoleApp19
 			}
 
 			sql += columns[columns.Length - 1] + " from autompg";
+
 			SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
 			SQLiteDataReader reader = com.ExecuteReader();
 
+			tuple<int, double>[] topKTuples = new tuple<int, double>[k] ;
+			for (int i = 0; i < k; i++)
+			{
+				topKTuples[i] = new tuple<int, double>(-1, 0);
+			}
 
 			while (reader.Read())
 			{
 				double simScore = 0;
 				for (int i = 0; i < values.Length; i++)
 				{
-					string sqlMeta = "select idfqf from idfqf where column = " + columns[i] + "and value = " + values[i];
+					string sqlMeta = "select idfqf from idfqf where column = '" + columns[i] + "' and value = " + values[i];
 					SQLiteCommand metaCom = new SQLiteCommand(sqlMeta, meta_dbConnection);
-					SQLiteDataReader metaReader = metaCom.ExecuteReader();
+					 SQLiteDataReader metaReader = metaCom.ExecuteReader();
 					if (metaReader.Read())
 					{
 						// numerical similarity
@@ -461,7 +465,7 @@ namespace ConsoleApp19
 						// categorical similarity
 						else
 						{
-							string sqlJaq = "select jacq from jacquard where value_1 = " + values[i] + "and value_2 = " + reader.GetValue(0);
+							string sqlJaq = "select jacq from jacquard where value_1 = " + values[i] + " and value_2 = '" + reader.GetValue(0) + "'";
 							SQLiteCommand jaqCom = new SQLiteCommand(sqlJaq, meta_dbConnection);
 							SQLiteDataReader jaqReader = jaqCom.ExecuteReader();
 							if (jaqReader.Read())
@@ -470,10 +474,56 @@ namespace ConsoleApp19
 							}
 						}
 					}
+				}
 
+				for (int i = 0; i < k; i++)
+				{
+					if (topKTuples[i].first == -1)
+					{
+						topKTuples[i] = new tuple<int, double>((int)reader.GetValue(0), simScore);
+						break;
+					}
+
+					if (topKTuples[i].second < simScore)
+					{
+						for (int j = k; j > i; j--)
+						{
+							topKTuples[j] = topKTuples[j-1];
+						}
+						topKTuples[i] = new tuple<int, double>((int)reader.GetValue(0), simScore);
+						break;
+					}
 				}
 			}
-			return 0.5;
+
+			return topKTuples;
+		}
+
+		static void printTopK(tuple<int, double>[] topKTuples, string start)
+		{
+			string sql = "";
+			for (int i = 0; i < topKTuples.Length; i++)
+			{
+				sql = start + "id = '";
+				sql += topKTuples[i].first + "'";
+
+				SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
+				SQLiteDataReader reader = com.ExecuteReader();
+				if (reader.Read())
+				{
+
+					object[] array = new object[12] { "", "", "", "", "", "", "", "", "", "", "", "" };
+					reader.GetValues(array);
+					for (int j = 0; j < array.Length; j++)
+					{
+						if (array[j].ToString() == "")
+							break;
+						Console.Write(reader.GetName(j) + ": " + array[j] + ", ");
+					}
+
+					Console.WriteLine();
+				}
+			}
 		}
 	}
 }
