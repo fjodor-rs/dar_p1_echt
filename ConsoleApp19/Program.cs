@@ -41,17 +41,19 @@ namespace ConsoleApp19
 		static Dictionary<tuple, double> idfDict = new Dictionary<tuple, double>();
 		static Dictionary<string, List <tupleInt>> jaqDict = new Dictionary<string, List<tupleInt>>();
 
-
+		static SQLiteConnection meta_dbConnection;
 		static SQLiteConnection m_dbConnection;
 		static void Main(string[] args)
 		{
-
+			queryParser("SHALOM WHERE SMABERT");
 			createDatabase();
-			rundbCommands();
+			rundbCommands("database.txt", m_dbConnection);
 			workloadLoad();
 			qf();
 			idf();
+			createMetaDB();
 			fillMetaDB();
+			
 
 			string command = "Select * from autompg";
 			SQLiteCommand henk = new SQLiteCommand(command, m_dbConnection);
@@ -62,17 +64,20 @@ namespace ConsoleApp19
 			while (true)
 			{
 				string s = Console.ReadLine();
-				SQLiteCommand com = new SQLiteCommand(s, m_dbConnection);
+				SQLiteCommand com = new SQLiteCommand(s, meta_dbConnection);
 				SQLiteDataReader reader = com.ExecuteReader();
 				while (reader.Read())
 				{
-					object[] array = new object[1];
+					
+					object[] array = new object[12] {"", "", "", "", "", "", "", "", "", "", "", "" };
 					reader.GetValues(array);
-
 					for (int i = 0; i < array.Length; i++)
 					{
-						Console.Write(reader.GetName(i) + ": " + array[i] + ", ");
+						if (array[i].ToString() == "")
+							break;
+						Console.Write( reader.GetName(i) + ": " + array[i] + ", ");
 					}
+
 					Console.WriteLine();
 				}
 			}
@@ -85,11 +90,11 @@ namespace ConsoleApp19
 			m_dbConnection.Open();
 		}
 
-		public static void rundbCommands()
+		public static void rundbCommands(string fileName, SQLiteConnection m_dbConnection)
 		{
 			try
 			{
-				using (StreamReader sr = new StreamReader("../../database.txt"))
+				using (StreamReader sr = new StreamReader("../../" + fileName))
 				{
 					string line;
 
@@ -210,7 +215,6 @@ namespace ConsoleApp19
 			{
 				double qfv = (double)t.Value / maxDict[t.Key.column];
 				qfDict.Add(t.Key, qfv);
-				Console.WriteLine(t.Key.column + " " + t.Key.value + " " + qfv);
 			}
 		}
 
@@ -280,27 +284,43 @@ namespace ConsoleApp19
 
 		static void createMetaDB()
 		{
-
+			SQLiteConnection.CreateFile("MetaDatabase.sqlite");
+			meta_dbConnection = new SQLiteConnection("Data Source=MetaDatabase.sqlite;Version=3;");
+			meta_dbConnection.Open();
+			rundbCommands("metadb.txt", meta_dbConnection);
 		}
 
 		static void fillMetaDB()
 		{
 			StreamWriter sr;
 			sr = new StreamWriter("../../metaload.txt");
-
-
+			string sql = "";
+			SQLiteCommand command;
+			
 			foreach (KeyValuePair<tuple, double> t in idfDict)
 			{
-				sr.WriteLine("INSERT INTO idfqf VALUES (" + t.Key.column + ", " + t.Key.value + ", " + t.Value +  ")" );
+				
+				sql = "INSERT INTO idfqf VALUES ('" + t.Key.column + "', '" + t.Key.value + "', '" + doubleToString(t.Value) + "')";
+				sr.WriteLine(sql);
+				command = new SQLiteCommand(sql, meta_dbConnection);
+				command.ExecuteNonQuery();
 			}
 
 			foreach (KeyValuePair<tuple, double> t in qfDict)
 			{
-                sr.WriteLine("INSERT INTO idfqf VALUES (" + t.Key.column + ", " + t.Key.value + ", " + t.Value + ")");
-            }
+				sql = "INSERT INTO idfqf VALUES ('" + t.Key.column + "', '" + t.Key.value + "', '" + doubleToString(t.Value) + "')";
+				sr.WriteLine(sql);
+				command = new SQLiteCommand(sql, meta_dbConnection);
+				command.ExecuteNonQuery();
+			}
 
 			calculateJaqCof(sr);
             sr.Close();
+		}
+
+		static string doubleToString(double val)
+		{
+			return val.ToString().Replace(',', '.');
 		}
 
 		static string trimString(string v)
@@ -360,10 +380,97 @@ namespace ConsoleApp19
 							j++;
 						}
 					}
-
-					sr.WriteLine("INSERT INTO jacquard VALUES (" + t0.Key + ", " + t1.Key + ", " + ((double) combo) / total + ")" );
+					if (combo != 0)
+					{
+						string sql = "INSERT INTO jacquard VALUES (" + t0.Key + ", " + t1.Key + ", '" + doubleToString(((double)combo) / total) + "')";
+						sr.WriteLine(sql);
+						SQLiteCommand command = new SQLiteCommand(sql, meta_dbConnection);
+						command.ExecuteNonQuery();
+					}
 				}
 			}
+		}
+
+		static void queryParser(string query)
+		{
+			int k = 10;
+			int start_i = 0;
+			int j = 0;
+			string split = "WHERE ";
+			string start = query.Substring(0, query.IndexOf(split) + split.Length);
+			string end = query.Substring(query.IndexOf(split) + split.Length);
+			end = end.Replace(",", "");
+			end = end.Replace("=", "");
+			string[] terms = end.Split();
+			// als station_wagon niet mag kijk hiernaar
+			int strLength = end.Length / 2;
+			string[] columns = new string[strLength];
+			string[] values = new string[strLength];
+			
+			if (terms[0] == "k")
+			{
+				k = int.Parse(terms[1]);
+				start_i = 2;
+			}
+
+			for (int i = start_i; i < terms.Length; i++)
+			{
+				columns[j] = terms[i++];
+				values[j] = terms[i];
+				j++;
+			}
+			calculateSim(columns, values);
+
+		}
+
+		static double calculateSim(string[] columns, string[] values)
+		{
+
+			SQLiteCommand metaCom;
+			SQLiteDataReader metaReader;
+
+			string sql = "select ";
+			string sqlMeta = "";
+			
+
+			for (int i = 0; i < columns.Length - 1; i++)
+			{
+				sql += columns[i] + ", ";
+			}
+
+			sql += columns[columns.Length - 1] + " from autompg";
+			SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
+			SQLiteDataReader reader = com.ExecuteReader();
+
+
+			while (reader.Read())
+			{
+				double simScore = 0;
+				double idf = 0;
+				for (int i = 0; i < values.Length; i++)
+				{
+					// numerical similarity
+					if (double.TryParse(values[i], out double test))
+					{
+						sqlMeta = "select idfqf from idfqf where column = " + columns[i] + "and value = " + values[i];
+						metaCom = new SQLiteCommand(sqlMeta, m_dbConnection);
+						metaReader = metaCom.ExecuteReader();
+						if (metaReader.Read())
+						{
+							simScore += (double) metaReader.GetValue(0);
+						}
+					}
+
+					// categorical similarity
+					else
+					{
+
+					}
+
+
+				}
+			}
+			return 0.5;
 		}
 	}
 }
