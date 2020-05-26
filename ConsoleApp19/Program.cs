@@ -40,13 +40,11 @@ namespace ConsoleApp19
 			createDatabase();
 			rundbCommands("database.txt", m_dbConnection);
 			workloadLoad();
-			qf();
+			addQftoDict();
 			idf();
 			createMetaDB();
 			fillMetaDB();
 			queryParser("SELECT * FROM autompg WHERE k = 100, cylinders = 4, brand = 'ford';");
-
-			string command = "Select * from autompg";
 
 			while (true)
 			{
@@ -196,7 +194,7 @@ namespace ConsoleApp19
 			}
 		}
 		//  RQFk(v) / RQFMAXk
-		static void qf()
+		static void addQftoDict()
 		{
 			foreach (KeyValuePair<tuple<string, string>, int> t in freqDict)
 			{
