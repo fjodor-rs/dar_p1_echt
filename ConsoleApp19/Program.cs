@@ -357,16 +357,16 @@ namespace ConsoleApp19
 
 		static void queryParser(string query)
 		{
+			query = query.ToLower();
 			int k = 10;
 			int start_i = 0;
 			int j = 0;
-			string split = "WHERE ";
+			string split = "where ";
 			string start = query.Substring(0, query.IndexOf(split) + split.Length);
 			string end = query.Substring(query.IndexOf(split) + split.Length);
 			end = end.Replace(",", "");
 			end = end.TrimEnd(';');
 			string[] terms = end.Split();
-			// als station_wagon niet mag kijk hiernaar
 			int strLength = terms.Length / 3;
 			string[] columns; 
 			string[] values;
