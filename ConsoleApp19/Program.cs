@@ -437,9 +437,9 @@ namespace ConsoleApp19
 						// numerical similarity
 						if (double.TryParse(values[i], out double q))
 						{
-							// t value van de tuple, q value van de query
-							double innerproduct = ((double.Parse(reader[columns[i]].ToString()) - q) / hColumnDict[columns[i]]) * ((double.Parse(reader[columns[i]].ToString()) - q) / hColumnDict[columns[i]]);
-							simScore += Math.Exp(-0.5 * innerproduct) * (double) metaReader.GetValue(0) ;
+                            // t value van de tuple, q value van de query
+                            double innerproduct = ((double.Parse(reader[columns[i]].ToString()) - q) / hColumnDict[columns[i]]);
+							simScore += Math.Exp(-0.5 * innerproduct * innerproduct) * (double) metaReader.GetValue(0) ;
 						}
 
 						// categorical similarity
@@ -453,7 +453,23 @@ namespace ConsoleApp19
 								simScore += (double) jaqReader.GetValue(0) * (double)metaReader.GetValue(0);
 							}
 						}
-					}
+                    }
+                    else if(double.TryParse(values[i], out double q))
+                    {
+                        double denom = 0;
+                        sql = "select " + columns[i] + " from autompg";
+                        SQLiteCommand idfcom = new SQLiteCommand(sql, m_dbConnection);
+                        SQLiteDataReader r = idfcom.ExecuteReader();
+                        while (r.Read())
+                        {
+                            double ti = double.Parse(r[columns[i]].ToString());
+                            double diff = ti - q;
+                            denom += Math.Exp(-0.5 * (diff / hColumnDict[columns[i]]) * (diff / hColumnDict[columns[i]]));
+                        }
+                        double idfnumber = Math.Log10(N / denom);
+                        double innerproduct = ((double.Parse(reader[columns[i]].ToString()) - q) / hColumnDict[columns[i]]);
+                        simScore += Math.Exp(-0.5 * innerproduct * innerproduct) * idfnumber;
+                    }
 				}
                 double missingscore = 0;
 				// calculate missing score
