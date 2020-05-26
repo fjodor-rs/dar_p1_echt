@@ -8,7 +8,7 @@ using System.IO;
 
 namespace ConsoleApp19
 {
-
+	// generic tuple for multiple uses
 	public struct tuple<T, S>
 	{
 		public T first;
@@ -26,6 +26,7 @@ namespace ConsoleApp19
 		static int N = 395;
 		static int id = 0;
 
+		// multiple dictionaries for keeping track of the h values for every column, the frequencies of tuple attributes and the qf, idf and jaqcuard values
 		static Dictionary<string, double> hColumnDict = new Dictionary<string, double>();
 		static Dictionary<tuple<string, string>, int> freqDict = new Dictionary<tuple<string, string>, int>();
 		static Dictionary<string, int> maxDict = new Dictionary<string, int>();
