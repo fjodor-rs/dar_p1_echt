@@ -39,11 +39,14 @@ namespace ConsoleApp19
 
         static SQLiteConnection meta_dbConnection;
 		static SQLiteConnection m_dbConnection;
+
 		static void Main(string[] args)
 		{
+			Console.WriteLine("Aan het laden...");
+
 			createDatabase();
 			rundbCommands("database.txt", m_dbConnection);
-			workloadLoad();
+			readInWorkload();
 			addQftoDict();
 			idf();
 			createMetaDB();
@@ -58,6 +61,7 @@ namespace ConsoleApp19
 			}
 		}
 
+		//creates the file and connection with the autompg database
 		public static void createDatabase()
 		{
 			SQLiteConnection.CreateFile("MyDatabase.sqlite");
@@ -65,6 +69,7 @@ namespace ConsoleApp19
 			m_dbConnection.Open();
 		}
 
+		// runs the insert and table creation commands for the autompg database
 		public static void rundbCommands(string fileName, SQLiteConnection m_dbConnection)
 		{
 			try
@@ -87,7 +92,31 @@ namespace ConsoleApp19
 			}
 		}
 
-		public static void qf(string[] q)
+		// reads in the workload from the .txt file
+		static void readInWorkload()
+		{
+			try
+			{
+				using (StreamReader sr = new StreamReader("../../workload.txt"))
+				{
+					string line;
+
+					while ((line = sr.ReadLine()) != null)
+					{
+						string[] q = line.Split(' ');
+						qfParser(q);
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine("The file could not be read:");
+				Console.WriteLine(e.Message);
+			}
+		}
+
+		// uses the workload to calculate the qf values and Jacquard values
+		public static void qfParser(string[] q)
 		{
 			int idx = 0;
 			int times = int.Parse(q[0]);
@@ -131,28 +160,7 @@ namespace ConsoleApp19
 			}
 		}
 
-		static void workloadLoad()
-		{
-			try
-			{
-				using (StreamReader sr = new StreamReader("../../workload.txt"))
-				{
-					string line;
-
-					while ((line = sr.ReadLine()) != null)
-					{
-						string[] q = line.Split(' ');
-						qf(q);
-					}
-				}
-			}
-			catch (Exception e)
-			{
-				Console.WriteLine("The file could not be read:");
-				Console.WriteLine(e.Message);
-			}
-		}
-
+		// counts the amount of times a attribute is used in the workload queries
 		static void freqCounter(string v, string k, int times)
 		{
 			v = trimString(v);
@@ -183,7 +191,7 @@ namespace ConsoleApp19
 				maxDict.Add(k, freqDict[temp]);
 			}
 		}
-		//  RQFk(v) / RQFMAXk
+
 		static void addQftoDict()
 		{
 			foreach (KeyValuePair<tuple<string, string>, int> t in freqDict)
@@ -193,6 +201,7 @@ namespace ConsoleApp19
 			}
 		}
 
+		// determines the idf value for all numerical data
 		static void idf()
 		{
 
@@ -225,6 +234,7 @@ namespace ConsoleApp19
 			}
 		}
 
+		// calculates the standard deviation used to calculate the h value
 		static double calculateStdDev(string col)
 		{
 			double sum = 0;
@@ -242,7 +252,8 @@ namespace ConsoleApp19
 			}
 			return Math.Sqrt(sum / (N - 1));
 		}
-
+		
+		// create and connect with the meta database
 		static void createMetaDB()
 		{
 			SQLiteConnection.CreateFile("MetaDatabase.sqlite");
@@ -251,6 +262,7 @@ namespace ConsoleApp19
 			rundbCommands("metadb.txt", meta_dbConnection);
 		}
 
+		// fill the meta database with idf, qf and jacquard values
 		static void fillMetaDB()
 		{
 			StreamWriter sr;
@@ -279,18 +291,7 @@ namespace ConsoleApp19
 			sr.Close();
 		}
 
-		static string doubleToString(double val)
-		{
-			return val.ToString().Replace(',', '.');
-		}
-
-		static string trimString(string v)
-		{
-			v = v.Remove(0, 1);
-			v = v.Remove(v.Length - 1, 1);
-			return v;
-		}
-
+		// calculates the jacquard value for an attribute in an 'IN' statement. Does not add any zero values.
 		static void calculateJaqCof(StreamWriter sr)
 		{
 			foreach (KeyValuePair<string, List<tuple<int, int>>> t0 in jaqDict)
@@ -356,6 +357,8 @@ namespace ConsoleApp19
 			}
 		}
 
+
+		// parses the query entered by a user
 		static void queryParser(string query)
 		{
 			query = query.ToLower();
@@ -395,23 +398,22 @@ namespace ConsoleApp19
 
             try
             {
-                tuple<int, double>[] topKTuples = calculateSim(columns, values, k);
+                tuple<int, double>[] topKTuples = calculateTopK(columns, values, k);
                 printTopK(topKTuples, start);
             }
             catch(Exception e)
             {
                 Console.WriteLine(e.Message);
-                Console.WriteLine("Fjodor's customer service: Please try again good sir/mam.");
+                Console.WriteLine("Incorrect query, please try again");
             }
 		}
 
-		static tuple<int, double>[] calculateSim(string[] columns, string[] values, int k)
+		// calculates the simulator of a tuple and a query
+		static tuple<int, double>[] calculateTopK(string[] columns, string[] values, int k)
 		{
 
 			string sql = "select * from autompg";
-
 			SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
-            
             SQLiteDataReader reader = com.ExecuteReader();
 
 			tuple<int, double>[] topKTuples = new tuple<int, double>[k] ;
@@ -464,6 +466,7 @@ namespace ConsoleApp19
                         missingscore += Math.Log10((double)metaReader.GetValue(0));
                     }
                 }
+
                 MissingAttributesValues.Add(int.Parse(reader["id"].ToString()), missingscore);
 				for (int i = 0; i < k; i++)
 				{
@@ -527,5 +530,19 @@ namespace ConsoleApp19
 				}
 			}
 		}
+
+		static string doubleToString(double val)
+		{
+			return val.ToString().Replace(',', '.');
+		}
+
+		static string trimString(string v)
+		{
+			v = v.Remove(0, 1);
+			v = v.Remove(v.Length - 1, 1);
+			return v;
+		}
+
+
 	}
 }
