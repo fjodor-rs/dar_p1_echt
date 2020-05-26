@@ -48,7 +48,8 @@ namespace ConsoleApp19
 			idf();
 			createMetaDB();
 			fillMetaDB();
-			queryParser("SELECT * FROM autompg WHERE k = 100, cylinders = 4, brand = 'ford';");
+
+            Console.WriteLine("Alles is geladen, je kan nu queries typen");
 
 			while (true)
 			{
@@ -419,6 +420,8 @@ namespace ConsoleApp19
 				topKTuples[i] = new tuple<int, double>(-1, 0);
 			}
 
+            Dictionary<int, double> MissingAttributesValues = new Dictionary<int, double>();
+
 			while (reader.Read())
 			{
 				double simScore = 0;
@@ -450,6 +453,7 @@ namespace ConsoleApp19
 						}
 					}
 				}
+                double missingscore = 0;
                 for (int i = 0; i < categoricalNames.Length; i++)
                 {
                     string sqlMeta = "select idfqf from idfqf where column = '" + categoricalNames[i] + "' and value = '" + reader[categoricalNames[i]] + "'";
@@ -457,9 +461,10 @@ namespace ConsoleApp19
                     SQLiteDataReader metaReader = metaCom.ExecuteReader();
                     if (metaReader.Read())
                     {
-                        simScore += Math.Log10((double)metaReader.GetValue(0));
+                        missingscore += Math.Log10((double)metaReader.GetValue(0));
                     }
                 }
+                MissingAttributesValues.Add(int.Parse(reader["id"].ToString()), missingscore);
 				for (int i = 0; i < k; i++)
 				{
 					if (topKTuples[i].first == -1)
@@ -468,6 +473,19 @@ namespace ConsoleApp19
 						break;
 					}
 
+                    if(topKTuples[i].second == simScore)
+                    {
+                        if(MissingAttributesValues[topKTuples[i].first] < MissingAttributesValues[int.Parse(reader["id"].ToString())])
+                        {
+                            for (int j = k - 1; j > i; j--)
+                            {
+                                topKTuples[j] = topKTuples[j - 1];
+                            }
+                            topKTuples[i] = new tuple<int, double>(int.Parse(reader["id"].ToString()), simScore);
+                            break;
+                        }
+                    }
+                    
 					if (topKTuples[i].second < simScore)
 					{
 						for (int j = k-1; j > i; j--)
