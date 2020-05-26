@@ -456,6 +456,7 @@ namespace ConsoleApp19
 					}
 				}
                 double missingscore = 0;
+				// calculate missing score
                 for (int i = 0; i < categoricalNames.Length; i++)
                 {
                     string sqlMeta = "select idfqf from idfqf where column = '" + categoricalNames[i] + "' and value = '" + reader[categoricalNames[i]] + "'";
@@ -468,6 +469,8 @@ namespace ConsoleApp19
                 }
 
                 MissingAttributesValues.Add(int.Parse(reader["id"].ToString()), missingscore);
+
+				//calculate top k using similarity score
 				for (int i = 0; i < k; i++)
 				{
 					if (topKTuples[i].first == -1)
@@ -504,6 +507,7 @@ namespace ConsoleApp19
 			return topKTuples;
 		}
 
+		// prints the requested top k to the console
 		static void printTopK(tuple<int, double>[] topKTuples, string start)
 		{
 			string sql = "";
