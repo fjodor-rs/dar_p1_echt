@@ -33,7 +33,11 @@ namespace ConsoleApp19
 		static Dictionary<tuple<string, string>, double> idfDict = new Dictionary<tuple<string, string>, double>();
 		static Dictionary<string, List<tuple<int, int>>> jaqDict = new Dictionary<string, List<tuple<int, int>>>();
 
-		static SQLiteConnection meta_dbConnection;
+
+        static string[] numericalNames = { "mpg", "cylinders", "displacement", "horsepower", "weight", "acceleration", "model_year", "origin" };
+        static string[] categoricalNames = {"brand", "model", "type" };
+
+        static SQLiteConnection meta_dbConnection;
 		static SQLiteConnection m_dbConnection;
 		static void Main(string[] args)
 		{
@@ -49,22 +53,7 @@ namespace ConsoleApp19
 			while (true)
 			{
 				string s = Console.ReadLine();
-				SQLiteCommand com = new SQLiteCommand(s, meta_dbConnection);
-				SQLiteDataReader reader = com.ExecuteReader();
-				while (reader.Read())
-				{
-
-					object[] array = new object[12] { "", "", "", "", "", "", "", "", "", "", "", "" };
-					reader.GetValues(array);
-					for (int i = 0; i < array.Length; i++)
-					{
-						if (array[i].ToString() == "")
-							break;
-						Console.Write(reader.GetName(i) + ": " + array[i] + ", ");
-					}
-
-					Console.WriteLine();
-				}
+                queryParser(s);
 			}
 		}
 
@@ -207,31 +196,30 @@ namespace ConsoleApp19
 		{
 
 			string sql = "";
-			string[] clNames = { "mpg", "cylinders", "displacement", "horsepower", "weight", "acceleration", "model_year", "origin"};
 			for (int i = 0; i < 8; i++)
 			{
-				sql = "select distinct " + clNames[i] + " from autompg";
+				sql = "select distinct " + numericalNames[i] + " from autompg";
 				SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
 				SQLiteDataReader reader = command.ExecuteReader();
 			
-				double h = calculateStdDev(clNames[i]) * 1.06 * Math.Pow(N, -1 / 5.0);
-				hColumnDict.Add(clNames[i], h);
+				double h = calculateStdDev(numericalNames[i]) * 1.06 * Math.Pow(N, -1 / 5.0);
+				hColumnDict.Add(numericalNames[i], h);
 
 				while (reader.Read())
 				{
 					double denom = 0;
-					double t = double.Parse(reader[clNames[i]].ToString());
-					sql = "select " + clNames[i] + " from autompg";
+					double t = double.Parse(reader[numericalNames[i]].ToString());
+					sql = "select " + numericalNames[i] + " from autompg";
 					SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
 					SQLiteDataReader r = com.ExecuteReader();
 					while (r.Read())
 					{
-						double ti = double.Parse(r[clNames[i]].ToString());
+						double ti = double.Parse(r[numericalNames[i]].ToString());
 						double diff = ti - t;
 						denom += Math.Exp(-0.5 * (diff / h) * (diff / h));
 					}
 
-					idfDict.Add(new tuple<string, string>(clNames[i], t.ToString()), Math.Log10(N / denom));
+					idfDict.Add(new tuple<string, string>(numericalNames[i], t.ToString()), Math.Log10(N / denom));
 				}	
 			}
 		}
@@ -404,8 +392,16 @@ namespace ConsoleApp19
 				j++;
 			}
 
-			tuple<int, double>[]  topKTuples = calculateSim(columns, values, k);
-			printTopK(topKTuples, start);
+            try
+            {
+                tuple<int, double>[] topKTuples = calculateSim(columns, values, k);
+                printTopK(topKTuples, start);
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e.Message);
+                Console.WriteLine("Fjodor's customer service: Please try again good sir/mam.");
+            }
 		}
 
 		static tuple<int, double>[] calculateSim(string[] columns, string[] values, int k)
@@ -414,7 +410,8 @@ namespace ConsoleApp19
 			string sql = "select * from autompg";
 
 			SQLiteCommand com = new SQLiteCommand(sql, m_dbConnection);
-			SQLiteDataReader reader = com.ExecuteReader();
+            
+            SQLiteDataReader reader = com.ExecuteReader();
 
 			tuple<int, double>[] topKTuples = new tuple<int, double>[k] ;
 			for (int i = 0; i < k; i++)
@@ -453,7 +450,16 @@ namespace ConsoleApp19
 						}
 					}
 				}
-
+                for (int i = 0; i < categoricalNames.Length; i++)
+                {
+                    string sqlMeta = "select idfqf from idfqf where column = '" + categoricalNames[i] + "' and value = '" + reader[categoricalNames[i]] + "'";
+                    SQLiteCommand metaCom = new SQLiteCommand(sqlMeta, meta_dbConnection);
+                    SQLiteDataReader metaReader = metaCom.ExecuteReader();
+                    if (metaReader.Read())
+                    {
+                        simScore += Math.Log10((double)metaReader.GetValue(0));
+                    }
+                }
 				for (int i = 0; i < k; i++)
 				{
 					if (topKTuples[i].first == -1)
